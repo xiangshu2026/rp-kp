@@ -30,9 +30,17 @@ jobs:
 
       - name: Run tests
         run: |
-          fail=0
+          set -o pipefail
+          failed=""
           for f in test_*.py; do
             echo "--- $f ---"
-            python "$f" || fail=1
+            if ! python "$f"; then
+              echo "::error file=$f::test failed"
+              failed="$failed $f"
+            fi
           done
-          exit $fail
+          if [ -n "$failed" ]; then
+            echo "FAILED:$failed"
+            exit 1
+          fi
+          echo "all test scripts passed"
