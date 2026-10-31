@@ -278,13 +278,49 @@ python test_semantic_boundary.py
 
 ---
 
+## 后端是怎么做的
+
+这个项目不是「前端 + 一个转发脚本」，`server.py` 是个完整的本地 HTTP 服务（917 行 / 34 KB，**纯标准库**）。
+
+| 方面 | 实现 |
+|---|---|
+| **HTTP 服务** | `http.server.ThreadingHTTPServer` —— 多线程，一路 SSE 流式聊天不会阻塞其它请求 |
+| **路由** | 39 个 GET + 27 个 POST，手写路径分发，无框架 |
+| **流式输出** | `/api/chat_stream` 用 SSE（`text/event-stream`）逐字推正文，最后单独推一份状态块 |
+| **多后端路由** | 本地 Ollama `/api/chat` 与任意 OpenAI 兼容 `/chat/completions` 双通道，运行时切换 |
+| **并发与状态** | 会话状态落盘（`sessions/`），`ThreadingHTTPServer` 保证并发请求各自独立 |
+| **文件上传** | 角色卡 / 模组 / 地图导入，PDF·DOCX·TXT 三种格式解析 |
+| **安全边界** | 只监听 `127.0.0.1`，不对外暴露；无鉴权是因为默认单机自用 |
+| **零依赖** | 不用 Flask / FastAPI / uvicorn，`urllib` 发请求，`http.server` 收请求 |
+
+主要 API 分组：
+
+```
+会话类    /api/sessions  /api/session  /api/session_meta  /api/state
+对话类    /api/chat      /api/chat_stream（SSE）  /api/compress
+角色类    /api/cards     /api/card      /api/card_new    /api/card_import
+          /api/card_random /api/dnd_new /api/dnd_random   /api/dnd_card
+模组类    /api/modules   /api/module    /api/module_import /api/module_act
+规则类    /api/systems   /api/roll      /api/grow        /api/points
+队友类    /api/teammates /api/teammate  /api/teammate_test
+地图类    /api/maps      /api/map       /api/map_import  /api/vision_models
+导入类    /api/tavern_import  /api/occ_custom  /api/relations
+审计类    /api/audit
+```
+
+> **为什么不用框架**：这个工具的核心诉求是「拷到任何一台 Windows 上双击就能跑」。
+> 一旦引入 Flask/FastAPI，用户就得先 `pip install`，Python 版本差异、venv 激活、
+> 公司电脑装不了包……全是拦路虎。标准库的 `http.server` 虽然原始，但零安装成本。
+
+---
+
 ## 目录结构
 
 ```
 rp-kp-app/
 ├── 启动.bat              双击启动
 ├── 自检.bat              环境检查
-├── server.py             HTTP 服务 + 全部 API
+├── server.py             HTTP 服务 + 全部 API（917 行 / 34 KB，纯标准库）
 ├── engine.py             三层记忆（状态 / 摘要 / 滑窗）
 ├── coc7.py               COC 7th 规则
 ├── card_import.py        角色卡导入
