@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q .
+
+      - name: Run tests
+        run: |
+          fail=0
+          for f in test_*.py; do
+            echo "--- $f ---"
+            python "$f" || fail=1
+          done
+          exit $fail

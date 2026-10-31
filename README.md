@@ -1,6 +1,7 @@
 # 跑团 KP
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://github.com/xiangshu2026/rp-kp/actions/workflows/tests.yml/badge.svg)](https://github.com/xiangshu2026/rp-kp/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](requirements.txt)
 [![Local LLM](https://img.shields.io/badge/LLM-Ollama%20%2F%20OpenAI--compatible-green)](#)
 
