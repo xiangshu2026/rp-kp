@@ -1,9 +1,10 @@
 import sys, zlib
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
-import doc_import as di
 from pathlib import Path
 
-tmp = Path(r"E:/deepseek工作区/rp-kp-app/_t")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import doc_import as di
+
+tmp = Path(__file__).resolve().parent / "_t"
 tmp.mkdir(exist_ok=True)
 
 # 1. docx

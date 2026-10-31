@@ -1,10 +1,11 @@
 import sys, json, base64, struct, zlib
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
-import tavern_card as tc
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import tavern_card as tc
 from PIL import Image
 
-tmp = Path(r"E:/deepseek工作区/rp-kp-app/_t2")
+tmp = Path(__file__).resolve().parent / "_t2"
 tmp.mkdir(exist_ok=True)
 
 # 1. 造一张真实酒馆 PNG 卡（V2 规范）
