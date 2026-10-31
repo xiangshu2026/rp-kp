@@ -1,0 +1,13 @@
+# KP 模型封装：只固化采样参数与上下文，提示词由 kp.py 动态注入
+# 这样改提示词不用重建模型，世界书/角色卡也可以每局替换
+FROM qwen3:30b-a3b-instruct-2507-q4_K_M
+
+# 上下文 24K（实测上限）：8G 显存 + 34G 内存下 32768 会 CUDA OOM，24576 正常
+PARAMETER num_ctx 24576
+PARAMETER temperature 0.85
+PARAMETER top_p 0.92
+PARAMETER top_k 60
+PARAMETER repeat_penalty 1.08
+PARAMETER num_predict 1600
+
+# 关掉 Qwen3 思考模式：Ollama 0.40.2 的 Modelfile 不支持 think 参数，调用时传 "think": false

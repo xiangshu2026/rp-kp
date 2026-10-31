@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跑团 KP</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">跑团 KP<span class="dot" id="statusDot"></span></div>
+
+    <div class="tabs2">
+      <button class="t2 active" data-tab="play">跑团</button>
+      <button class="t2" data-tab="prep">准备</button>
+    </div>
+
+    <div id="tab-play" class="tabpane">
+      <div class="section">
+        <div class="label">会话</div>
+        <div id="sessionList" class="list"></div>
+        <button id="newSession" class="btn ghost small">＋ 新会话</button>
+      </div>
+      <div class="section">
+        <div class="label">当前绑定</div>
+        <div id="bindInfo" class="bind-box"></div>
+      </div>
+      <div class="section grow">
+        <div class="label">当前状态</div>
+        <pre id="stateBox" class="state-box">（尚无状态）</pre>
+        <button id="auditBtn" class="btn ghost small">伏笔审计</button>
+        <button id="compressBtn" class="btn ghost small">手动压缩记忆</button>
+      </div>
+    </div>
+
+    <div id="tab-prep" class="tabpane hidden">
+      <div class="section">
+        <div class="label">世界设定</div>
+        <select id="worldSelect" class="select"></select>
+        <button id="editWorld" class="btn ghost small">编辑当前世界</button>
+      </div>
+      <div class="section">
+        <div class="label">角色卡</div>
+        <div id="cardList" class="list"></div>
+        <button id="newCard" class="btn ghost small">＋ 新建车卡</button>
+        <button id="importCard" class="btn ghost small">导入已有角色卡</button>
+      </div>
+      <div class="section">
+        <div class="label">模组</div>
+        <div id="moduleList" class="list"></div>
+        <button id="importModule" class="btn ghost small">导入模组文档</button>
+      </div>
+      <div class="section">
+        <div class="label">队友</div>
+        <div id="teamList" class="list"></div>
+        <button id="newTeam" class="btn ghost small">＋ 添加队友</button>
+      </div>
+      <div class="section">
+        <div class="label">关系图</div>
+        <button id="openRel" class="btn ghost small">编辑角色关系</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">模型</div>
+      <div id="modelInfo" class="muted small"></div>
+      <button id="settingsBtn" class="btn ghost small">设置</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <div id="title">未选择会话</div>
+        <select id="sysSelect" class="select" style="width:auto;font-size:12px;padding:3px 8px">
+          <option value="coc7">COC 7e</option>
+          <option value="dnd5e">DND 5e</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <div id="meta" class="muted small"></div>
+        <button id="diceToggle" class="btn ghost small">骰子</button>
+      </div>
+    </header>
+    <div id="chat"></div>
+    <aside id="dicePanel" class="dice-panel hidden">
+      <div class="dp-head">
+        <span>骰子</span>
+        <button id="diceClose" class="btn ghost small">×</button>
+      </div>
+      <div id="diceQuick" class="dp-quick"></div>
+      <div class="dp-row">
+        <input id="diceExpr" class="dp-input" placeholder="1d100 / 2d6+3" value="1d100">
+        <button id="diceRoll" class="btn primary small">掷</button>
+      </div>
+      <div id="diceCheck" class="dp-check"></div>
+      <div class="dp-label">结果</div>
+      <div id="diceLog" class="dp-log"></div>
+    </aside>
+    <footer id="composer">
+      <textarea id="input" placeholder="你想做什么？（Ctrl+Enter 发送）" rows="3"></textarea>
+      <button id="send" class="btn primary">发送</button>
+    </footer>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-head"><span id="modalTitle">编辑</span><button id="modalClose" class="btn ghost small">关闭</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
