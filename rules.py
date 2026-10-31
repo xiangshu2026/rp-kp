@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """规则系统：COC 7th 与 DND 5e 双轨，各自的提示词、判定、角色卡结构。"""
 import json, time
 from pathlib import Path

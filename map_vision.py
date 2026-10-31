@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """地图图片解析：视觉模型抽房间与连线，或从文本描述解析。"""
 import base64, json, re, urllib.request
 NL = chr(10)

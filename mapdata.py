@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """地图：房间节点 + 连通关系，按当前位置装载（不整张塞进上下文）。"""
 import json, re, time
 from pathlib import Path

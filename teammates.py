@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """队友系统：本地 Ollama 或云端 API，各自有角色卡与立场，参与跑团对话。"""
 import json, random, time, urllib.request, urllib.error
 from pathlib import Path

@@ -1,5 +1,12 @@
 # 跑团 KP
 
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](requirements.txt)
+[![Local LLM](https://img.shields.io/badge/LLM-Ollama%20%2F%20OpenAI--compatible-green)](#)
+
+> 原仓库：https://github.com/xiangshu2026/rp-kp
+> 如果你是从别处下载的，建议回原仓库获取最新版与 issue 支持。
+
 本地部署的 **COC 7th / DND 5e** 跑团工具。KP（守秘人）用本机 Ollama 跑，
 队友可以本地也可以走云端 API。
 
@@ -13,7 +20,7 @@
 
 ### 需要什么
 
-- **Python 3.9+**（只用标准库，**不用装任何第三方包**）
+- **Python 3.9+**（只用两个第三方库：Pillow + python-docx，`pip install -r requirements.txt` 一次装完）
 - **模型**：两种方式二选一
   - **方式 A：本地 Ollama**（免费、离线、需要显卡/内存）
   - **方式 B：任意 OpenAI 兼容 API**（不用显卡，按量付费）
@@ -29,6 +36,15 @@
 **选哪个模型完全看你自己的偏好**——中文语感、推理能力、速度、显存的取舍不一样。
 
 ### 三步跑起来
+
+**0. 装依赖**（只有第一次要，约 10 MB）
+
+```bash
+pip install -r requirements.txt
+```
+
+只有两个包：`Pillow`（地图识图用）和 `python-docx`（导入 Word 模组用）。
+**不需要 GPU、不需要 numpy、不需要任何 LLM SDK** —— 模型调用走标准库 `urllib` 发 HTTP。
 
 **1. 拉模型**（只有第一次要，约 18 GB）
 

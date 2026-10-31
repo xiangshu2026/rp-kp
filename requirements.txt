@@ -1,0 +1,15 @@
+# 跑团 KP · Python 依赖
+#
+# 安装：
+#   pip install -r requirements.txt
+#
+# 说明：本项目只用两个第三方库，其余全部是 Python 标准库。
+# 如果不需要「地图识图」和「Word 模组导入」，这两个也可以不装。
+
+Pillow>=9.0.0
+python-docx>=0.8.11
+
+# 不需要 GPU / 不需要 numpy / 不需要任何 LLM SDK。
+# 模型调用走 HTTP，用标准库 urllib 发请求：
+#   - 本地 Ollama：默认 http://127.0.0.1:11434
+#   - 任意 OpenAI 兼容服务：在设置里填 base 地址与 key

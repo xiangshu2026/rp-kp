@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """角色卡导入：JSON / 文本解析 / 从任意文本里抽属性。"""
 import json, re, time
 import coc7

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """模组切分器：把长模组切成「幕」，只把当前幕 + 索引喂进上下文。"""
 import json, re, time
 from pathlib import Path

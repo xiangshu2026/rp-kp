@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """酒馆(SillyTavern)角色卡：只取性格与外形。"""
 import base64, json, struct, zlib
 from pathlib import Path

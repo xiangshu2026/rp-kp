@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """骰子引擎：NdM+K 表达式，COC(d100) 与 DND(d20) 两种判定。"""
 import random, re
 NL = chr(10)

@@ -1,3 +1,5 @@
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 from PIL import Image, ImageDraw, ImageOps
 import sys
 src = r"C:/Users/YourName/.dsh/attachments/v1/objects/e5/e5ca58746c90cd14b162bd0246205f53dd6c242849f1d1319fd6e9d289449d52"

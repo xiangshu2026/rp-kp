@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """记忆引擎：三层记忆 + 状态合并 + 滚动摘要 + 伏笔审计。无第三方依赖。"""
 import json, time, urllib.request
 from pathlib import Path

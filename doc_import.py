@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """文档导入：PDF / DOCX / TXT / MD 提取纯文本。PDF 用纯标准库实现。"""
 import re, zlib
 from pathlib import Path

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """本地跑团 KP —— 软件入口。只用 Python 标准库。"""
 import json, sys, threading, time, webbrowser
 import http.server

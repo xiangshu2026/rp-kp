@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """模组存储 + 预算感知装载：长模组按幕装载，只喂当前需要的部分。"""
 import json, time
 from pathlib import Path

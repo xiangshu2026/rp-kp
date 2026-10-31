@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """玩家输入解析：区分【强制指令】/（行动或心理）/ OOC / 普通发言。"""
 import re
 NL = chr(10)

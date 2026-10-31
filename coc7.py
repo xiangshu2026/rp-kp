@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
+# https://github.com/xiangshu2026/rp-kp
 """COC 7th 角色卡：属性、派生值、技能表、职业模板、随机生成。"""
 import json, random, time
 from pathlib import Path
