@@ -1,25 +1,25 @@
 @echo off
 chcp 65001 >nul
-echo === 跑团 KP 环境自检 ===
+title 环境自检
+echo ===== 跑团 KP 环境自检 =====
 echo.
-echo [1/3] 检查 Python...
-python --version 2>nul || (echo   ✗ 未安装 Python & goto :fail)
-echo   ✓ Python 正常
+echo [1/3] Python
+python --version 2>&1
 echo.
-echo [2/3] 检查 Ollama...
-ollama --version 2>nul || (echo   ✗ 未安装 Ollama 或未启动 & goto :fail)
-echo   ✓ Ollama 正常
+echo [2/3] Ollama 服务
+curl -s -m 3 http://127.0.0.1:11434/api/tags >nul 2>nul
+if errorlevel 1 (
+  echo   [X] Ollama 没在运行，请先打开 Ollama
+) else (
+  echo   [OK] Ollama 在线
+)
 echo.
-echo [3/3] 检查 kp-qwen3 模型...
-ollama list 2>nul | findstr /i "kp-qwen3" >nul || (echo   ✗ 缺少 kp-qwen3 模型，请先执行：ollama create kp-qwen3 -f Modelfile & goto :fail)
-echo   ✓ kp-qwen3 已就绪
+echo [3/3] KP 模型
+ollama list 2>nul | findstr /C:"kp-qwen3" >nul
+if errorlevel 1 (
+  echo   [X] 没有 kp-qwen3，执行：ollama create kp-qwen3 -f Modelfile
+) else (
+  echo   [OK] kp-qwen3 已安装
+)
 echo.
-echo === 自检通过，可以双击 启动.bat ===
 pause
-exit /b 0
-
-:fail
-echo.
-echo === 自检未通过，请按上面提示处理后重试 ===
-pause
-exit /b 1

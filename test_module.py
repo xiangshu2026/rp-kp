@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import module_parser as mp
 
 # 造一个典型长模组：8 幕，每幕 8000 字

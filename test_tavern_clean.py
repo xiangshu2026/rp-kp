@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tavern_card as tc
 
 # 复现截图里的那张卡（Jolyne）

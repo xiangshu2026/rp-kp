@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import coc7
 
 base_attrs = {"STR":50,"CON":50,"SIZ":50,"DEX":50,"APP":50,"INT":50,"POW":60,"EDU":70}

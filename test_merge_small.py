@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import module_parser as mp
 
 short = "# 测试模组" + chr(10) + chr(10) + "## 第一幕 雨夜" + chr(10) + "调查员抵达宅邸。门开着。" + chr(10) + chr(10) + "## 第二幕 地下室" + chr(10) + "楼梯向下延伸。" + chr(10) + chr(10) + "## 第三幕 真相" + chr(10) + "尽头是一面镜子。"

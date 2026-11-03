@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
-# https://github.com/xiangshu2026/rp-kp
 """本地跑团 KP —— 软件入口。只用 Python 标准库。"""
 import json, sys, threading, time, webbrowser
 import http.server
@@ -624,8 +622,54 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json({"error": "模组内容为空"}, 400)
             return
         m = module_store.import_text(title, text, source)
-        self._json({"ok": True, "id": m["id"], "acts": len(m["acts"]),
-                     "chars": m["chars"], "tokens": m["tokens"]})
+
+        # ── 导入后自动化（2026-11-01 新增）──────────────────────────────
+        # body 里带 auto=True 时：
+        #   ① 起草世界书 → 写进目标世界（已有内容就备份再写，绝不静默覆盖）
+        #   ② 新建一个以模组命名的会话
+        #   ③ 把会话绑定到该模组第 1 幕
+        # 开场白由前端调 /api/chat 触发（那里有完整的上下文装配逻辑）。
+        result = {"ok": True, "id": m["id"], "acts": len(m["acts"]),
+                  "chars": m["chars"], "tokens": m["tokens"]}
+        if body.get("auto"):
+            cfg2 = engine.load_config()
+            world = (body.get("world") or "COC通用").strip() or "COC通用"
+            session = (body.get("session") or title).strip() or title
+
+            # ① 世界书
+            wb_note = ""
+            try:
+                old_wb = engine.read_world(world, "worldbook.md", "")
+                drafted = engine.draft_worldbook(text, cfg2)
+                if drafted:
+                    if old_wb.strip():
+                        stamp = time.strftime("%Y%m%d-%H%M%S")
+                        engine.write_world(world, "worldbook.bak-before-" + stamp + ".md", old_wb)
+                        wb_note = "已备份原世界书并写入新草稿"
+                    else:
+                        wb_note = "已写入世界书草稿"
+                    engine.write_world(world, "worldbook.md", drafted)
+                    result["worldbook"] = drafted
+                else:
+                    wb_note = "世界书起草失败（模组正文可能太短或模型无响应），原文件未动"
+            except Exception as e:
+                wb_note = "世界书起草异常：" + str(e)[:120]
+            result["worldbook_note"] = wb_note
+            result["world"] = world
+
+            # ② ③ 建会话 + 绑幕
+            try:
+                sess = engine.Session(session, world)
+                sess.meta["world"] = world
+                sess.meta["module_id"] = m["id"]
+                sess.meta["act_no"] = 1
+                sess.save_meta()
+                result["session"] = sess.name
+                result["act_no"] = 1
+            except Exception as e:
+                result["session_note"] = "建会话失败：" + str(e)[:120]
+
+        self._json(result)
 
     def _scene_brief(self, s, card):
         """给队友看的简版场景：不含模组原文，只给状态里的事实。"""
@@ -677,73 +721,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 s.world = ws[0]
                 s.meta["world"] = s.world
                 s.save_meta()
-        fixed = engine.build_fixed_layer(s.world)
+        fixed, ctx_meta, parsed, rendered = self._build_context(s, cfg, body, text)
         if not fixed.strip():
             self._json({"error": "世界书为空：请在「准备 → 世界设定」里写提示词"}, 400)
             return
+        card = ctx_meta["card"]
+        mod_info = ctx_meta["mod_info"]
+        map_info = ctx_meta["map_info"]
+        system = ctx_meta["system"]
 
-        # 规则系统
-        system = s.meta.get("system") or "coc7"
-
-        # 角色卡
-        card = None
-        card_id = s.meta.get("card_id") or ""
-        if card_id:
-            card = coc7.load_card(card_id)
-        if card and (card.get("system") or "coc7") == "dnd5e":
-            card_ctx = rules.dnd_card_context(card)
-            system = "dnd5e"
-        else:
-            card_ctx = coc7.card_to_context(card) if card else ""
-
-        # 模组：只装载当前幕
-        mod_ctx = ""
-        mod_info = {"loaded": 0}
-        mid = s.meta.get("module_id") or ""
-        if mid:
-            mod = module_store.load_module(mid)
-            if mod:
-                budget = int(body.get("module_budget") or 7000)
-                mod_ctx, mod_info = module_store.build_context(
-                    mod, s.meta.get("act_no") or 1, budget)
-
-        # 地图：只装载当前房间
-        map_ctx = ""
-        map_info = {"loaded": 0}
-        map_id = s.meta.get("map_id") or ""
-        if map_id:
-            mm = mapdata.load_map(map_id)
-            if mm:
-                map_ctx, map_info = mapdata.build_context(mm, 1800)
-
-        # 角色关系
-        rel_ctx = relations.to_context(relations.load(),
-                                       card.get("name", "") if card else "")
-
-        sys_ctx = ""
-        if system == "dnd5e":
-            sys_ctx = NL.join([
-                "## 本局规则：DND 5e",
-                "",
-                "判定用 d20 + 调整值 vs DC。不要用 d100，不要用理智值。",
-                "DC 参考：很容易 5 / 容易 10 / 中等 15 / 困难 20 / 极难 25 / 几乎不可能 30。",
-                "战斗按先攻顺序，攻击 d20 vs AC。",
-            ])
-        else:
-            sys_ctx = NL.join([
-                "## 本局规则：COC 7th",
-                "",
-                "判定用 d100。01-05 大成功，96-100 大失败。",
-                "≤技能/5 极难成功，≤技能/2 困难成功，≤技能 普通成功。",
-            ])
-
-        extra = NL.join(x for x in (sys_ctx, player_input.force_instruction_block(),
-                                    mod_ctx, map_ctx, card_ctx, rel_ctx) if x.strip())
-        if extra.strip():
-            fixed = fixed + NL + NL + extra
-
-        parsed = player_input.parse(text)
-        rendered = player_input.render_for_prompt(text, parsed) or text
         s.append_turn("user", rendered)
         msgs = engine.assemble(fixed, s.state, s.summary, s.turns, int(cfg["window"]))
 
@@ -796,7 +782,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         reply = "".join(buf)
         prose, new_state = engine.split_state(reply)
         # 模型没在正文里吐状态块时，单独发一次轻量请求提取状态
-        # （实测有些模型 0/3 概率吐 JSON 块，拆成独立调用后成功率明显提高）
         if not new_state:
             new_state = engine.extract_state(prose, s.state, cfg)
         if new_state:
@@ -837,6 +822,100 @@ class Handler(http.server.BaseHTTPRequestHandler):
               "force_count": len(parsed.get("force_texts") or []),
               "ooc": bool(parsed.get("has_ooc"))})
 
+    def _build_context(self, s, cfg, body, text):
+        """统一装配上下文：世界书 + 规则 + 强制指令 + 模组 + 地图 + 角色卡 + 关系。
+
+        2026-11-01 重构：原来只有 _chat_stream 有这段，_chat（非流式）
+        完全没装载模组/角色卡/地图，任何非流式调用都会丢模组内容。
+        现在两个入口共用这一个方法，不可能再出现不一致。
+        返回 (fixed, meta_dict, parsed)。
+        """
+        fixed = engine.build_fixed_layer(s.world)
+
+        # 规则系统
+        system = s.meta.get("system") or "coc7"
+
+        # 角色卡
+        card = None
+        card_id = s.meta.get("card_id") or ""
+        if card_id:
+            card = coc7.load_card(card_id)
+        if card and (card.get("system") or "coc7") == "dnd5e":
+            card_ctx = rules.dnd_card_context(card)
+            system = "dnd5e"
+        else:
+            card_ctx = coc7.card_to_context(card) if card else ""
+
+        # 模组：只装载当前幕
+        mod_ctx = ""
+        mod_info = {"loaded": 0}
+        mid = s.meta.get("module_id") or ""
+        if mid:
+            mod = module_store.load_module(mid)
+            if mod:
+                budget = int(body.get("module_budget") or 7000)
+                mod_ctx, mod_info = module_store.build_context(
+                    mod, s.meta.get("act_no") or 1, budget)
+
+        # 地图：只装载当前房间
+        map_ctx = ""
+        map_info = {"loaded": 0}
+        map_id = s.meta.get("map_id") or ""
+        if map_id:
+            mm = mapdata.load_map(map_id)
+            if mm:
+                map_ctx, map_info = mapdata.build_context(mm, 1800)
+
+        # 角色关系
+        rel_ctx = relations.to_context(relations.load(),
+                                       card.get("name", "") if card else "")
+
+        if system == "dnd5e":
+            sys_ctx = NL.join([
+                "## 本局规则：DND 5e",
+                "",
+                "判定用 d20 + 调整值 vs DC。不要用 d100，不要用理智值。",
+                "DC 参考：很容易 5 / 容易 10 / 中等 15 / 困难 20 / 极难 25 / 几乎不可能 30。",
+                "战斗按先攻顺序，攻击 d20 vs AC。",
+            ])
+        else:
+            sys_ctx = NL.join([
+                "## 本局规则：COC 7th",
+                "",
+                "判定用 d100。01-05 大成功，96-100 大失败。",
+                "≤技能/5 极难成功，≤技能/2 困难成功，≤技能 普通成功。",
+            ])
+
+        # 没绑角色卡时，必须明确告诉模型「你在用默认值」，否则它会每轮瞎猜一个数
+        if not card:
+            sys_ctx += NL + NL + NL.join([
+                "## ⚠️ 本局没有绑定角色卡",
+                "",
+                "玩家还没建卡或没绑定，所以**没有任何技能数值可查**。",
+                "要求检定时，**一律使用 COC 7th 标准默认值**，并且同一技能在同一局里必须始终用同一个数：",
+                "侦查 25 / 聆听 20 / 图书馆使用 20 / 潜行 20 / 话术 5 / 魅惑 15 / 恐吓 15 /",
+                "说服 10 / 妙手 10 / 攀爬 20 / 跳跃 20 / 游泳 20 / 追踪 10 / 导航 10 /",
+                "急救 30 / 心理学 10 / 神秘学 5 / 锁匠 1 / 机械维修 10 / 电气维修 10 /",
+                "格斗(斗殴) 25 / 射击(手枪) 20 / 闪避 25 / 灵感 50 / 知识 60。",
+                "",
+                "**这是硬规则**：上面这张表里的数值，**照抄，不许改**。",
+                "看到「聆听」就只能写 20，不能写 45、55 或任何别的数；看到「侦查」就只能写 25。",
+                "**不要**自己编 60、70、45 这种数——那是玩家卡上的值，你现在没有卡。",
+                "如果你觉得某个技能该用别的数，那说明玩家该先建卡，而不是你替它编。",
+                "唯一例外：理智（SAN）和幸运，用状态层里记录的当前值；没有记录就写 50。",
+            ])
+
+        extra = NL.join(x for x in (sys_ctx, player_input.force_instruction_block(),
+                                    mod_ctx, map_ctx, card_ctx, rel_ctx) if x.strip())
+        if extra.strip():
+            fixed = fixed + NL + NL + extra
+
+        parsed = player_input.parse(text)
+        rendered = player_input.render_for_prompt(text, parsed) or text
+        meta = {"system": system, "card": card, "mod_info": mod_info,
+                "map_info": map_info, "card_name": (card or {}).get("name", "")}
+        return fixed, meta, parsed, rendered
+
     def _chat(self, cfg, body):
         sess_name = body.get("session") or "default"
         world = body.get("world") or "default"
@@ -845,12 +924,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json({"error": "空输入"}, 400)
             return
         s = engine.Session(sess_name, world)
-        fixed = engine.build_fixed_layer(s.world)
+        if not s.world or s.world == "default":
+            ws = engine.list_worlds()
+            if ws:
+                s.world = ws[0]
+                s.meta["world"] = s.world
+                s.save_meta()
+
+        # 2026-11-01：改用公共装配，和流式入口共用同一套上下文
+        fixed, ctx_meta, parsed, rendered = self._build_context(s, cfg, body, text)
         if not fixed.strip():
             self._json({"error": "世界书为空，请先在「世界设定」里写提示词"}, 400)
             return
+        card = ctx_meta["card"]
+        mod_info = ctx_meta["mod_info"]
+        map_info = ctx_meta["map_info"]
+        system = ctx_meta["system"]
 
-        s.append_turn("user", text)
+        s.append_turn("user", rendered)
         msgs = engine.assemble(fixed, s.state, s.summary, s.turns, int(cfg["window"]))
         t0 = time.time()
         try:
@@ -867,7 +958,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         reply = r["message"]["content"]
         prose, new_state = engine.split_state(reply)
         # 模型没在正文里吐状态块时，单独发一次轻量请求提取状态
-        # （实测有些模型 0/3 概率吐 JSON 块，拆成独立调用后成功率明显提高）
         if not new_state:
             new_state = engine.extract_state(prose, s.state, cfg)
         if new_state:
@@ -890,7 +980,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                      "state_text": engine.render_state(s.state),
                      "compressed": did_compress, "elapsed": round(dt, 1),
                      "prompt_tokens": r.get("prompt_eval_count", 0),
-                     "eval_tokens": r.get("eval_count", 0)})
+                     "eval_tokens": r.get("eval_count", 0),
+                     "module_info": mod_info, "map_info": map_info,
+                     "card_name": (card or {}).get("name", ""), "system": system})
 
 
 def main():

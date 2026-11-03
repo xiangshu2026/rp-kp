@@ -4,8 +4,8 @@
 不调用真实模型：把 engine.chat 打桩成固定返回，只测状态与裁剪逻辑。
 """
 import sys, os, json, shutil, tempfile
-sys.path.insert(0, r"E:\deepseek工作区\rp-kp-app")
-
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import engine
 
 # 打桩：不真的调模型

@@ -122,10 +122,16 @@ function renderChat() {
     who.textContent = t.role === "user" ? "你" : (t.role === "team" ? (t.name || "队友") : "KP");
     const b = document.createElement("div");
     b.className = "bubble";
-    b.textContent = t.content;
+    const display = t.role === "user" ? t.content : stripCheckHint(t.content);
+    b.textContent = display;
     wrap.appendChild(who);
     wrap.appendChild(b);
     box.appendChild(wrap);
+    // 历史消息里的〔检定〕也要能点（刷新页面后依然可用）
+    if (t.role !== "user") {
+      const checks = parseCheck(display || "");
+      if (checks.length) renderCheckCard(checks, wrap);
+    }
   });
   box.scrollTop = box.scrollHeight;
 }
@@ -207,7 +213,8 @@ async function send() {
   const fin = el("streaming");
   if (fin) fin.remove();
 
-  const finalProse = (meta && meta.prose) || acc.split(chr96 + chr96 + chr96)[0].trim();
+  const rawProse = (meta && meta.prose) || acc.split(chr96 + chr96 + chr96)[0].trim();
+  const finalProse = stripCheckHint(rawProse);
   if (finalProse) {
     appendTurn("assistant", finalProse);
     const last = el("chat").lastElementChild;
@@ -217,6 +224,9 @@ async function send() {
       s.textContent = meta.elapsed + "s · 上下文 " + meta.prompt_tokens + " tok · 输出 " + meta.eval_tokens + " tok";
       if (meta.compressed) s.textContent += " · 已压缩记忆";
       last.appendChild(s);
+      // KP 要求了检定 → 渲染成可点击卡片
+      const checks = parseCheck(finalProse);
+      if (checks.length) renderCheckCard(checks, last);
     }
   }
   if (meta) {
@@ -636,10 +646,178 @@ async function readModFile(f) {
 }
 
 async function doModImport(title, text, filename) {
-  const r = await POST("/api/module_import", { title, text, filename });
+  // 导入时问一次要不要顺手把世界书、会话、绑定都做好
+  const LF = String.fromCharCode(10);
+  let auto = confirm(
+    "导入后要不要自动完成这些？" + LF + LF +
+    "① 让模型读模组，起草世界书（写进当前世界）" + LF +
+    "② 新建一个会话并绑定到第 1 幕" + LF +
+    "③ 自动写一段开场白" + LF + LF +
+    "选「取消」= 只导入，其他步骤你自己来。"
+  );
+  const body = { title, text, filename };
+  if (auto) {
+    body.auto = true;
+    body.world = S.world && S.world !== "default" ? S.world : "COC通用";
+    body.session = title;
+  }
+  if (auto) {
+    const wname = body.world;
+    const okOverwrite = confirm(
+      "即将让模型读这份模组，起草世界书并写进「" + wname + "」世界。" + LF + LF +
+      "如果这个世界已经有世界书，会先自动备份成 worldbook.bak-before-<时间>.md，然后覆盖。" + LF + LF +
+      "继续？"
+    );
+    if (!okOverwrite) { auto = false; body.auto = false; }
+  }
+  toast(auto ? "正在导入并起草世界书，稍等…" : "正在导入…");
+  const r = await POST("/api/module_import", body);
   if (r.error) { toast(r.error); return; }
-  closeModal(); await refreshModules();
-  toast("已导入：" + r.acts + " 幕 / " + r.chars + " 字 / 约 " + r.tokens + " token");
+  closeModal();
+  await refreshModules();
+  try {
+    const w2 = await API("/api/worlds");
+    S.worlds = w2.worlds || [];
+    fillWorlds();
+  } catch (e) { /* 世界列表刷新失败不影响主流程 */ }
+
+  if (!auto) {
+    toast("已导入：" + r.acts + " 幕 / " + r.chars + " 字 / 约 " + r.tokens + " token");
+    return;
+  }
+
+  const notes = [];
+  if (r.worldbook_note) notes.push("世界书：" + r.worldbook_note);
+  if (r.session) {
+    S.world = r.world || S.world;
+    if (el("worldSelect")) el("worldSelect").value = S.world;
+    await openSession(r.session);
+    notes.push("会话：" + r.session + "（第 1 幕）");
+  }
+  if (r.session_note) notes.push(r.session_note);
+  toast("已导入 " + r.acts + " 幕。" + LF + notes.join(LF));
+
+  if (r.session && !r.session_note) {
+    setTimeout(() => autoOpening(), 300);
+  }
+}
+
+
+// ==================== 检定提示卡片（2026-11-01 强化）====================
+// KP 在正文末尾用〔检定〕技能名 · 技能值 · 理由 要求检定，
+// 下一行用「→ 请掷「技能」（数值）」提示玩家操作。
+// 这里渲染成醒目的提示条：标题写「该掷什么」+ 理由 + 掷骰按钮。
+// 把正文里模型自己写的「→ 请掷…」行剥掉：卡片会重新生成更清楚的一版，
+// 否则界面上会出现两条重复的提示。模型不写这行也没关系，卡片照样有。
+function stripCheckHint(text) {
+  const lines = String(text || "").split(String.fromCharCode(10));
+  const out = [];
+  for (const ln of lines) {
+    const t = ln.trim();
+    if (t.startsWith("→") && t.indexOf("请掷") >= 0) continue;
+    out.push(ln);
+  }
+  return out.join(String.fromCharCode(10)).trim();
+}
+
+function parseCheck(text) {
+  const pat = "〔检定〕" + "\s*([^·" + "\n]+?)" + "\s*·" + "\s*(" + "\d+)" + "\s*·" + "\s*([^" + "\n]*)";
+  const re = new RegExp(pat, "g");
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    out.push({ skill: m[1].trim(), value: parseInt(m[2], 10), reason: m[3].trim() });
+  }
+  return out;
+}
+
+function renderCheckCard(checks, hostEl) {
+  if (!checks.length) return;
+  const box = document.createElement("div");
+  box.className = "check-card";
+  const head = document.createElement("div");
+  head.className = "check-head";
+  head.textContent = "该掷骰了";
+  box.appendChild(head);
+
+  // 说明条：告诉玩家两种掷骰方式，不懂 COC 也能操作
+  const tip = document.createElement("div");
+  tip.className = "check-tip";
+  const noCard = !S.meta || !S.meta.card_id;
+  if (noCard) {
+    tip.className = "check-tip warn";
+    tip.textContent = "⚠️ 这个会话还没绑定角色卡，数值是 COC 默认值。想用自己的卡，去「准备 → 角色卡」建好并绑定。";
+  } else {
+    tip.textContent = "点右边「掷骰」自动掷 d100 并回传 KP；也可以自己去右上角骰子面板掷，再把结果打给 KP。";
+  }
+  box.appendChild(tip);
+
+  checks.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "check-row";
+
+    const main = document.createElement("div");
+    main.className = "check-main";
+    const label = document.createElement("div");
+    label.className = "check-label";
+    label.textContent = "请掷「" + c.skill + "」 · 目标值 " + c.value;
+    main.appendChild(label);
+    if (c.reason) {
+      const reason = document.createElement("div");
+      reason.className = "check-reason";
+      reason.textContent = c.reason;
+      main.appendChild(reason);
+    }
+
+    const btn = document.createElement("button");
+    btn.className = "btn primary check-btn";
+    btn.textContent = "掷骰";
+    btn.title = "点一下自动掷 d100 并把结果发给 KP";
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = "…";
+      try {
+        const r = await POST("/api/roll", { mode: "coc", skill: c.value, label: c.skill });
+        const res = r.result || {};
+        btn.textContent = res.roll + " · " + res.grade;
+        btn.className = "btn check-btn " + (res.success ? "ok" : "fail");
+        // 结果也显示在卡片上，玩家能看到掷了什么
+        const fb = document.createElement("div");
+        fb.className = "check-fb " + (res.success ? "ok" : "fail");
+        fb.textContent = "d100 = " + res.roll + " → " + res.grade +
+                         "（目标 " + c.value + "）";
+        main.appendChild(fb);
+        const ta = el("input");
+        if (ta && !S.busy) {
+          ta.value = "【检定：" + c.skill + " d100=" + res.roll + "，结果 " + res.grade + "】" +
+                     (c.reason ? "（" + c.reason + "）" : "") + "我继续。";
+          await send();
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = "掷骰";
+        toast("掷骰失败：" + (e && e.message ? e.message : e));
+      }
+    };
+
+    row.appendChild(main);
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+  hostEl.appendChild(box);
+}
+
+async function autoOpening() {
+  if (!S.cur) return;
+  if (S.busy) { setTimeout(autoOpening, 800); return; }
+  toast("正在生成开场白…");
+  const ta = el("input");
+  if (!ta) return;
+  ta.value = "（开场）请描写这一幕的开场：交代时间、地点、在场人物与当前氛围，把调查员放进场景里。\n\n" +
+             "【硬性约束】只写「调查员在这里、周围是什么样子、有什么正在发生」，" +
+             "**不要**写调查员做了任何动作、说了任何话、有任何心理活动或决定。" +
+             "调查员的第一个动作由玩家自己决定。写到可以开始行动的那一刻就停。";
+  await send();
 }
 // ==================== 队友 ====================
 async function refreshTeam() {

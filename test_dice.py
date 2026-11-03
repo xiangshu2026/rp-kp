@@ -1,5 +1,6 @@
 import sys, random
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dice
 
 # 1. 基础表达式

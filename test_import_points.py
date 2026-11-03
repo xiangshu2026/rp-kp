@@ -1,5 +1,6 @@
 import sys, json
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import coc7, skillpoints as sp, card_import as ci
 
 # 1. 导入一张高技能卡

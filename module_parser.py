@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
-# https://github.com/xiangshu2026/rp-kp
 """模组切分器：把长模组切成「幕」，只把当前幕 + 索引喂进上下文。"""
 import json, re, time
 from pathlib import Path
@@ -23,8 +21,20 @@ HEAD_PATTERNS = [
 
 
 def is_head(line):
+    """识别标题行。返回 (标题文本, 层级) 或 None。
+
+    层级规则：markdown 标题按 # 数量（1~3）；非 markdown 的编号式标题
+    （第X幕 / SCENE / ACT / Chapter / 【】）一律视为幕级 = 2。
+    """
     s = line.strip()
     if not s or len(s) > 60:
+        return None
+    # markdown 标题优先，能拿到真实层级
+    m = re.match(r"^(#{1,6})\s*(.+)$", s)
+    if m:
+        t = m.group(2).strip()
+        if 2 <= len(t) <= 50:
+            return t, len(m.group(1))
         return None
     for pat in HEAD_PATTERNS:
         m = pat.match(s)
@@ -32,27 +42,32 @@ def is_head(line):
             t = (m.group(1) if m.groups() else s).strip()
             t = t.lstrip("#").strip()
             if 2 <= len(t) <= 50:
-                return t
+                return t, 2
     return None
 
 
 def split_module(text):
-    """按标题切分。返回 [{title, body, chars}]，首段无标题的归为「序」。"""
+    """按标题切分。返回 [{title, level, body, chars}]，首段无标题的归为「序」。"""
     lines = text.splitlines()
     sections = []
     cur_title = "序"
+    cur_level = 2
     cur_body = []
     for ln in lines:
         h = is_head(ln)
         if h:
+            title, level = h
             if cur_body and any(x.strip() for x in cur_body):
-                sections.append({"title": cur_title, "body": NL.join(cur_body).strip()})
-            cur_title = h
+                sections.append({"title": cur_title, "level": cur_level,
+                                 "body": NL.join(cur_body).strip()})
+            cur_title = title
+            cur_level = level
             cur_body = []
         else:
             cur_body.append(ln)
     if any(x.strip() for x in cur_body):
-        sections.append({"title": cur_title, "body": NL.join(cur_body).strip()})
+        sections.append({"title": cur_title, "level": cur_level,
+                         "body": NL.join(cur_body).strip()})
 
     out = []
     for s in sections:
@@ -64,24 +79,32 @@ def split_module(text):
 
 
 def merge_small(sections, min_chars=200, keep_min=3):
-    """太碎的段落合并到上一节。
+    """把「子级」小节合并进上一节，**幕级标题永远独立**。
 
-    但保证最终幕数不少于 keep_min（模组本身够长时）——
-    否则短模组会被压成一幕，失去分幕的意义。
+    2026-11-01 修：旧版只按字数（<200）合并，不看标题层级，
+    导致「## 第一幕」「## 第二幕」这种短幕被整段吞进上一幕，
+    玩家会发现剧情跳幕、模组内容消失。
+
+    新规则：
+      · 先算出全篇最浅的标题层级 = 幕级基准 base（# 一级标题除外，
+        那是文档大标题，不算幕）
+      · 比 base 更深的是子级 → 合并进上一节
+      · 等于 base 的是幕级 → 独立成幕，无论多短
     """
     if not sections:
         return []
-    # 如果总幕数已经不多，直接原样返回，不合并
-    if len(sections) <= keep_min:
-        return [dict(s) for s in sections]
+    # 一级标题（# 文档标题）不参与基准计算
+    levels = [s.get("level", 2) for s in sections if s.get("level", 2) > 1]
+    base = min(levels) if levels else 2
+
     out = []
-    for idx, s in enumerate(sections):
-        if out and s["chars"] < min_chars:
-            remaining = len(sections) - idx - 1
-            if len(out) + remaining >= keep_min:
-                out[-1]["body"] += NL + NL + s["title"] + NL + s["body"]
-                out[-1]["chars"] = len(out[-1]["body"])
-                continue
+    for s in sections:
+        lv = s.get("level", base)
+        if out and lv > base:
+            # 子级：合并进上一节，保留小标题作为分隔
+            out[-1]["body"] += NL + NL + s["title"] + NL + s["body"]
+            out[-1]["chars"] = len(out[-1]["body"])
+            continue
         out.append(dict(s))
     return out
 

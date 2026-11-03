@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"E:/deepseek工作区/rp-kp-app")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import player_input as pi
 
 LB, RB = chr(12304), chr(12305)

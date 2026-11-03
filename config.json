@@ -1,0 +1,13 @@
+{
+ "kp_backend": "openai",
+ "ollama": "http://127.0.0.1:11434",
+ "model": "kp-qwen3",
+ "kp_api_base": "http://127.0.0.1:8795/v1",
+ "kp_api_key": "local-workbuddy-cn",
+ "kp_api_model": "deepseek-v4.1-flash",
+ "num_ctx": 24576,
+ "num_predict": 1600,
+ "temperature": 0.85,
+ "window": 6,
+ "compress_every": 8
+}

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# 跑团 KP · 本地 COC 7th / DND 5e 桌面跑团工具
-# https://github.com/xiangshu2026/rp-kp
 """文档导入：PDF / DOCX / TXT / MD 提取纯文本。PDF 用纯标准库实现。"""
 import re, zlib
 from pathlib import Path
@@ -41,7 +39,38 @@ def read_docx(path):
 
 
 def read_pdf(path):
-    """纯标准库 PDF 文本提取：解压内容流，抽 Tj / TJ 字符串。"""
+    """PDF 文本提取。
+
+    2026-11-01 重写：优先用 PyMuPDF（fitz），它能在 1 秒内处理 10MB 级 PDF；
+    没装 PyMuPDF 时回退到纯标准库逐流扫描（大文件会很慢，且扫描版抽不出字）。
+    """
+    # ── 优先：PyMuPDF ──────────────────────────────────────────
+    try:
+        import fitz  # PyMuPDF
+        try:
+            doc = fitz.open(str(path))
+        except Exception as e:
+            return None, "PDF 打开失败：" + str(e)[:120]
+        parts = []
+        page_count = doc.page_count
+        for page in doc:
+            try:
+                parts.append(page.get_text("text"))
+            except Exception:
+                continue
+        doc.close()
+        txt = NL.join(parts)
+        txt = re.sub(NL + "{3,}", NL + NL, txt).strip()
+        if not txt:
+            return None, ("这个 PDF 抽不出文本（" + str(page_count) +
+                          " 页全是图片，是扫描版）。需要先 OCR 转文字再导入。")
+        return txt, None
+    except ImportError:
+        pass  # 没装 PyMuPDF，走下面的标准库路径
+    except Exception as e:
+        return None, "PyMuPDF 解析失败：" + str(e)[:120]
+
+    # ── 回退：纯标准库 ────────────────────────────────────────
     try:
         raw = Path(path).read_bytes()
     except Exception as e:
@@ -79,7 +108,8 @@ def read_pdf(path):
 
     if not texts:
         return None, ("这个 PDF 抽不出文本（可能是扫描版图片 PDF，共 " +
-                      str(stream_count) + " 个流）。请先 OCR 转文字再导入。")
+                      str(stream_count) + " 个流）。" +
+                      "装 PyMuPDF 可大幅提速并支持更多 PDF：pip install pymupdf")
     txt = NL.join(texts)
     txt = re.sub(NL + "{3,}", NL + NL, txt)
     return txt.strip(), None
